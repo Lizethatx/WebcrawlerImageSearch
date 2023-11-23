@@ -12,30 +12,27 @@ class ImageDownloader:
         self.master = master
         master.title("Web Crawler-JAF")
 
-        # Configurar tamaño mínimo para la ventana
+        # Configurar tamaÃ±o mÃ­nimo para la ventana
         master.minsize(width=650, height=400)
 
-        # Botón para seleccionar carpeta
-        self.button_folder = tk.Button(master, text="Seleccionar carpeta", command=self.select_folder)
-        self.button_folder.pack(padx=10, pady=10)
-
-        # Etiqueta que muestra la carpeta seleccionada
-        self.label_folder = tk.Label(master, text="Selecciona una carpeta de destino para las imagenes descargadas:")
-        self.label_folder.pack(padx=10, pady=10)
-
-        # Etiqueta y entrada para la palabra de búsqueda
-        self.label = tk.Label(master, text="Ingresa la palabra para la busqueda:")
+        # Etiqueta y entrada para la palabra de bÃºsqueda
+        self.label = tk.Label(master, text="Ingresa la imagen a buscar:")
         self.label.pack(padx=10, pady=10)
         self.entry = tk.Entry(master)
-        self.entry.pack(padx=1, pady=1)
+        self.entry.pack(padx=10, pady=10)
 
-        # Botón para buscar imagenes
+        # BotÃ³n para buscar imagenes
         self.button_search = tk.Button(master, text="Buscar imagenes", height=1, width=15, command=self.load_images)
-        self.button_search.pack(padx=10, pady=10)
+        self.button_search.pack(side=tk.TOP, pady=(10, 0))
 
         # Canvas para mostrar las imagenes descargadas con la barra de desplazamiento
         self.canvas = tk.Canvas(master)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Crear botÃ³n para descargar imagenes seleccionadas
+        self.download_button = tk.Button(self.master, text="Descargar imagenes seleccionadas", command=self.download_selected_images)
+        self.download_button.pack(side=tk.LEFT, padx=10, pady=10)
+        self.download_button.config(state=tk.DISABLED)  # Deshabilitar el botÃ³n al inicio
 
         # Configurar la barra de desplazamiento vertical
         self.scrollbar = tk.Scrollbar(master, orient="vertical", command=self.canvas.yview)
@@ -44,27 +41,28 @@ class ImageDownloader:
 
         # Marco para contener las miniaturas de imagenes en el canvas
         self.images_frame = tk.Frame(self.canvas)
-        self.canvas.create_window((0, 0), window=self.images_frame, anchor=tk.NW)
+        self.canvas.create_window((0, 5), window=self.images_frame, anchor=tk.NW)
 
-        # Carpeta seleccionada y lista de miniaturas
-        self.folder_name = ""
+        # Lista para almacenar imagenes y sus datos
         self.images = []
+        self.image_data_list = []
 
         # Crear barra lateral para miniaturas y checkboxes
         self.create_sidebar()
 
-    def select_folder(self):
-        # Método para seleccionar una carpeta
-        self.folder_name = filedialog.askdirectory()
-        self.label_folder.config(text=f"Carpeta seleccionada: {self.folder_name}")
+        # Carpeta seleccionada
+        self.folder_name = ""
 
     def load_images(self):
-        # Método para cargar las miniaturas de las imagenes sin descargarlas
-        self.clear_images()  # Llamar a clear_images también al inicio de load_images
+        # MÃ©todo para cargar las miniaturas de las imagenes sin descargarlas
+        self.download_button.config(state=tk.DISABLED)  # Deshabilitar el botÃ³n al inicio
+        self.clear_images()  # Llamar a clear_images tambiÃ©n al inicio de load_images
+        self.image_data_list = []
+        
 
-        # Obtener la palabra clave para la búsqueda
-        keywords = self.entry.get()
-        url = f"https://www.google.com/search?q={keywords}&source=lnms&tbm=isch"
+        # Obtener la palabra clave para la bÃºsqueda
+        self.keywords = self.entry.get()
+        url = f"https://www.google.com/search?q={self.keywords}&source=lnms&tbm=isch"
 
         response = requests.get(url)
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -75,15 +73,18 @@ class ImageDownloader:
         col_num = 0
         for i, img in enumerate(img_tags):
             img_url = img['src']
-            if img_url.startswith('https') and i < 20:  # Mostrar solo las primeras 20 imagenes
-                # Descargar la imagen y convertirla en miniatura
+            if img_url.startswith('https') and i < 20:
+                # Descargar la imagen y almacenar sus datos
                 response = requests.get(img_url)
                 img_data = response.content
-                img = Image.open(io.BytesIO(img_data))
-                img.thumbnail((200, 200))  # Redimensionar la imagen al tamaño deseado
+                img_original = Image.open(io.BytesIO(img_data))
+
+                # Almacenar la imagen y sus datos en la lista
+                self.image_data_list.append((img_original, img_data))
+                img_original.thumbnail((200, 200))  # Redimensionar la imagen al tamaÃ±o deseado
 
                 # Miniatura de la imagen
-                img = ImageTk.PhotoImage(img)
+                img = ImageTk.PhotoImage(img_original)
                 thumbnail_label = tk.Label(self.images_frame, image=img)
                 thumbnail_label.image = img
                 thumbnail_label.grid(row=row_num, column=col_num, padx=20, pady=15)  # Reducir el espacio vertical
@@ -92,45 +93,50 @@ class ImageDownloader:
                 checkbox_var = tk.BooleanVar()
                 checkbox = tk.Checkbutton(self.images_frame, variable=checkbox_var)
 
+                # AsegÃºrate de almacenar la variable en la tupla de imagenes
+                self.images.append((thumbnail_label, checkbox_var, img))
+
                 # Ajustar el valor de pady para reducir el espacio vertical
                 checkbox.grid(row=row_num + 1, column=col_num, pady=(0, 1))
 
-                # Incrementar el número de columna
+                # Incrementar el nÃºmero de columna
                 col_num += 1
 
-                # Si se alcanza el límite de tres columnas, pasar a la siguiente fila
+                # Si se alcanza el lÃ­mite de tres columnas, pasar a la siguiente fila
                 if col_num == 3:
                     col_num = 0
                     row_num += 2  # Ajuste para saltar una fila entre las imagenes
 
-                # Agregar miniatura y checkbox a la lista
-                self.images.append((thumbnail_label, checkbox, img))
+        # Habilitar el botÃ³n de descarga despuÃ©s de cargar las imagenes
+        self.download_button.config(state=tk.NORMAL)
 
-        # Mostrar el botón de descarga después de cargar las imagenes
-        download_button = tk.Button(self.master, text="Descargar imagenes seleccionadas", command=self.download_selected_images)
-        download_button.pack(pady=(10, 0))
+        # Mostrar el botÃ³n de descarga despuÃ©s de cargar las imagenes
+        self.update_scrollregion()
 
-        # Actualizar la barra deslizadora después de cargar las imagenes
+        # Mostrar el botÃ³n de descarga despuÃ©s de cargar las imagenes
         self.update_scrollregion()
 
     def clear_images(self):
-        # Método para destruir los widgets de las imagenes anteriores
-        for image, checkbox, _ in self.images:
-            image.destroy()
-            checkbox.destroy()
+        # MÃ©todo para destruir los widgets de las imÃ¡genes anteriores
+        for thumbnail_label, checkbox_var, img_widget in self.images:
+            thumbnail_label.destroy()
+            checkbox_var.set(False)  # Deseleccionar la casilla de verificaciÃ³n
+
+        # Limpiar la lista de imÃ¡genes
+        self.images = []
 
     def update_scrollregion(self):
-        # Método para actualizar la barra deslizadora
+        # MÃ©todo para actualizar la barra deslizadora
         self.canvas.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
     def create_sidebar(self):
-        # Método para crear la barra lateral
-        self.sidebar = tk.Frame(self.master, bg='lightgrey', padx=10, pady=10)
-        self.sidebar.pack(side=tk.RIGHT, fill=tk.BOTH)
+        # MÃ©todo para crear la barra lateral
+        self.sidebar = tk.Frame(self.images_frame, bg='lightgrey', padx=10, pady=10)
+        self.sidebar.grid(row=0, column=3, rowspan=100, sticky="n")
 
     def download_selected_images(self):
-        # Método para descargar solo las imagenes seleccionadas
+        # MÃ©todo para descargar solo las imagenes seleccionadas
         selected_images = [image for image in self.images if image[1].get()]  # Filtrar las imagenes seleccionadas
 
         if not selected_images:
@@ -138,18 +144,22 @@ class ImageDownloader:
             return
 
         # Crear una carpeta para las imagenes seleccionadas
-        selected_folder = os.path.join(self.folder_name, "SelectedImages")
+        self.folder_name = filedialog.askdirectory()
+        selected_folder = os.path.join(self.folder_name, f"{self.keywords}_Images")
         os.makedirs(selected_folder, exist_ok=True)
 
-        for count, (_, _, img) in enumerate(selected_images):
+        for count, (_, checkbox_var, img) in enumerate(selected_images):
+            # Obtener el dato de la imagen original desde la lista
+            img_original, img_data = self.image_data_list[count]
+
             # Guardar la imagen seleccionada en la nueva carpeta
-            img_path = os.path.join(selected_folder, f"selected_image_{count}.jpg")
-            img.save(img_path)
+            img_path = os.path.join(selected_folder, f"image_{count+1}.jpg")
+            img_original.save(img_path)
 
         # Mostrar mensaje de descarga completa
-        messagebox.showinfo("Descarga completa", "Las imagenes seleccionadas han sido descargadas en la carpeta SelectedImages.")
+        messagebox.showinfo("Descarga completa", f"Las imagenes seleccionadas han sido descargadas en la carpeta {self.keywords}_Images.")
 
-
-root = tk.Tk()
-app = ImageDownloader(root)
-root.mainloop()
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ImageDownloader(root)
+    root.mainloop()
