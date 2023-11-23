@@ -11,6 +11,9 @@ class ImageDownloader:
         self.master = master
         master.title("Web Crawler-JAF")
 
+        # Configurar tamaño mínimo para la ventana
+        master.minsize(width=650, height=400)
+
         # Botón para seleccionar carpeta
         self.button_folder = tk.Button(master, text="Seleccionar carpeta", command=self.select_folder)
         self.button_folder.pack(padx=10, pady=10)
@@ -29,9 +32,18 @@ class ImageDownloader:
         self.button_search = tk.Button(master, text="Buscar imagenes", height=1, width=15, command=self.search_images)
         self.button_search.pack(padx=10, pady=10)
 
-        # Marco para mostrar las imagenes descargadas
-        self.images_frame = tk.Frame(master)
-        self.images_frame.pack(padx=10, pady=10)
+        # Canvas para mostrar las imagenes descargadas con la barra de desplazamiento
+        self.canvas = tk.Canvas(master)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Configurar la barra de desplazamiento vertical
+        self.scrollbar = tk.Scrollbar(master, orient="vertical", command=self.canvas.yview)
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        # Marco para contener las miniaturas de imagenes en el canvas
+        self.images_frame = tk.Frame(self.canvas)
+        self.canvas.create_window((0, 0), window=self.images_frame, anchor=tk.NW)
 
         # Carpeta seleccionada, lista de miniaturas e imagenes seleccionadas
         self.folder_name = ""
@@ -40,9 +52,6 @@ class ImageDownloader:
 
         # Crear barra lateral para miniaturas y checkboxes
         self.create_sidebar()
-
-        # Configurar evento de cambio de tamaño de ventana
-        master.bind('<Configure>', self.resize_images)
 
     def search_images(self):
         # Método para buscar e descargar imagenes
@@ -77,25 +86,38 @@ class ImageDownloader:
         self.images = []  # Limpiar lista de miniaturas
         image_files = os.listdir(self.folder_name)
 
+        # Nueva estructura para organizar las imagenes en filas de tres
+        row_num = 0
+        col_num = 0
         for i, filename in enumerate(image_files):
             if filename.endswith(".jpg") and i < 20:  # Mostrar solo las primeras 20 imagenes
                 img = Image.open(f"{self.folder_name}/{filename}")
-                img.thumbnail((150, 150))  # Redimensionar la imagen al tamaño deseado
-
-                # Checkbox para cada imagen
-                checkbox_var = tk.BooleanVar()
-                checkbox = tk.Checkbutton(self.sidebar, variable=checkbox_var)
-                checkbox.checkbox_var = checkbox_var
-                checkbox.grid(row=i, column=0, pady=5)
+                img.thumbnail((200, 200))  # Redimensionar la imagen al tamaño deseado
 
                 # Miniatura de la imagen
                 img = ImageTk.PhotoImage(img)
-                thumbnail_label = tk.Label(self.sidebar, image=img)
+                thumbnail_label = tk.Label(self.images_frame, image=img)
                 thumbnail_label.image = img
-                thumbnail_label.grid(row=i, column=1, pady=5)
+                thumbnail_label.grid(row=row_num, column=col_num, padx=20, pady=35)
 
-                # Agregar checkbox y miniatura a la lista
-                self.images.append((checkbox, thumbnail_label, img))
+                # Incrementar el número de columna
+                col_num += 1
+
+                # Si se alcanza el límite de tres columnas, pasar a la siguiente fila
+                if col_num == 3:
+                    col_num = 0
+                    row_num += 1
+
+                # Agregar miniatura a la lista
+                self.images.append((thumbnail_label, img))
+
+        # Actualizar la barra deslizadora después de cargar las imagenes
+        self.update_scrollregion()
+
+    def update_scrollregion(self):
+        # Método para actualizar la barra deslizadora
+        self.canvas.update_idletasks()
+        self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
     def create_sidebar(self):
         # Método para crear la barra lateral
@@ -103,32 +125,9 @@ class ImageDownloader:
         self.sidebar.pack(side=tk.RIGHT, fill=tk.BOTH)
 
         # Botón para descargar imagenes seleccionadas
-        download_button = tk.Button(self.sidebar, text="Descargar imagenes seleccionadas", command=self.download_selected_images)
-        download_button.grid(row=21, columnspan=2, pady=10)
-
-    def download_selected_images(self):
-        # Método para descargar solo las imagenes seleccionadas
-        self.selected_images = [image for image in self.images if image[0].checkbox_var.get()]
-
-        for count, (_, _, img) in enumerate(self.selected_images):
-            response = requests.get(img)
-            with open(f"{self.folder_name}/selected_image_{count}.jpg", "wb") as f:
-                f.write(response.content)
-
-        # Mostrar mensaje de descarga completa
-        messagebox.showinfo("Descarga completa", "Las imagenes seleccionadas han sido descargadas.")
-
-    def resize_images(self, event):
-        # Método para redimensionar las imagenes de acuerdo al tamaño de la ventana
-        new_width = event.width // 4  # Dividir el ancho de la ventana en 4
-        new_height = event.height // 20  # Dividir el alto de la ventana en 20
-
-        for _, thumbnail_label, img in self.images:
-            resized_img = img.subsample(new_width, new_height)
-            thumbnail_label.configure(image=resized_img)
-            thumbnail_label.image = resized_img
+        # download_button = tk.Button(self.sidebar, text="Descargar imagenes seleccionadas", command=self.download_selected_images)
+        # download_button.grid(row=21, columnspan=2, pady=10)
 
 root = tk.Tk()
 app = ImageDownloader(root)
 root.mainloop()
-
