@@ -128,7 +128,6 @@ class ImageDownloader:
                         checkbox_var = tk.BooleanVar()
                         checkbox = tk.Checkbutton(self.images_frame, variable=checkbox_var, bg="#ffffff")
 
-                        # Asegurarse de almacenar la variable en la tupla de imágenes
                         self.images.append((thumbnail_label, checkbox_var))
 
                         # Ajustar el valor de pady para reducir el espacio vertical
