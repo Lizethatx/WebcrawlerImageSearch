@@ -6,17 +6,19 @@ from bs4 import BeautifulSoup
 from PIL import Image, ImageTk, UnidentifiedImageError
 import io
 import os
+import sys
+import subprocess
 
 class ImageDownloader:
     def __init__(self, master):
         self.master = master
         master.title("Buscador de imagenes")
 
-        # Configurar tamaÃ±o mÃ­nimo para la ventana
+        # Configurar tamaño mínimo para la ventana
         master.minsize(width=850, height=500)
         master.maxsize(width=850, height=650)
 
-        # ConfiguraciÃ³n de la interfaz de usuario
+        # Configuración de la interfaz de usuario
         self.setup_ui()
 
         # Lista para almacenar imagenes y sus datos
@@ -24,14 +26,14 @@ class ImageDownloader:
         self.image_data_list = []
 
     def setup_ui(self):
-        # Etiqueta y entrada para la palabra de bÃºsqueda
+        # Etiqueta y entrada para la palabra de búsqueda
         self.label = Label(self.master, text="Ingresa la imagen a buscar:")
         self.label.pack(padx=10, pady=10)
 
         self.entry = Entry(self.master)
         self.entry.pack(padx=10, pady=10)
 
-        # BotÃ³n para buscar imagenes
+        # Botón para buscar imagenes
         self.button_search = Button(self.master, text="Buscar imagenes", height=1, width=15, command=self.load_images)
         self.button_search.pack(side=tk.TOP, pady=(10, 0))
 
@@ -48,7 +50,7 @@ class ImageDownloader:
         self.images_frame = Frame(self.canvas)
         self.canvas.create_window((0, 0), window=self.images_frame, anchor=tk.NW)
 
-        # Etiqueta y control deslizante para el nÃºmero de imagenes
+        # Etiqueta y control deslizante para el número de imagenes
         self.image_count_label = Label(self.master, text="Numero de imagenes:")
         self.image_count_label.pack(pady=(100, 5))
 
@@ -56,21 +58,21 @@ class ImageDownloader:
         self.image_count_slider = Scale(self.master, from_=1, to=20, orient=tk.HORIZONTAL, variable=self.image_count_var, length=150)
         self.image_count_slider.pack(pady=(0, 10))
 
-        # BotÃ³n para descargar imagenes seleccionadas
+        # Botón para descargar imagenes seleccionadas
         self.download_button = Button(self.master, text="Descargar imagenes seleccionadas", command=self.download_selected_images)
         self.download_button.pack(padx=10, pady=25)
-        self.download_button.config(state=tk.DISABLED)  # Deshabilitar el botÃ³n al inicio
+        self.download_button.config(state=tk.DISABLED)  # Deshabilitar el botón al inicio
 
     def load_images(self):
-        # MÃ©todo para cargar las miniaturas de las imagenes sin descargarlas
-        self.download_button.config(state=tk.DISABLED)  # Deshabilitar el botÃ³n al inicio
-        self.clear_images()  # Llamar a clear_images tambiÃ©n al inicio de load_images
+        # Método para cargar las miniaturas de las imagenes sin descargarlas
+        self.download_button.config(state=tk.DISABLED)  # Deshabilitar el botón al inicio
+        self.clear_images()  # Llamar a clear_images también al inicio de load_images
         self.image_data_list = []
 
-        # Obtener el nÃºmero de imagenes deseadas del slider
+        # Obtener el número de imagenes deseadas del slider
         num_images = self.image_count_var.get()
 
-        # Obtener la palabra clave para la bÃºsqueda
+        # Obtener la palabra clave para la búsqueda
         self.keywords = self.entry.get()
         url = f"https://www.google.com/search?q={self.keywords}&source=lnms&tbm=isch"
 
@@ -108,16 +110,16 @@ class ImageDownloader:
                         checkbox_var = tk.BooleanVar()
                         checkbox = tk.Checkbutton(self.images_frame, variable=checkbox_var)
 
-                        # Asegurarse de almacenar la variable en la tupla de imÃ¡genes
+                        # Asegurarse de almacenar la variable en la tupla de imágenes
                         self.images.append((thumbnail_label, checkbox_var))
 
                         # Ajustar el valor de pady para reducir el espacio vertical
                         checkbox.grid(row=row_num + 1, column=col_num, pady=(0, 1))
 
-                        # Incrementar el nÃºmero de columna
+                        # Incrementar el número de columna
                         col_num += 1
 
-                        # Si se alcanza el lÃ­mite de tres columnas, pasar a la siguiente fila
+                        # Si se alcanza el límite de tres columnas, pasar a la siguiente fila
                         if col_num == 3:
                             col_num = 0
                             row_num += 2  
@@ -125,18 +127,20 @@ class ImageDownloader:
                     except (UnidentifiedImageError, requests.RequestException) as e:
                         print("Error al obtener mas imagenes:", str(e))
 
-            # Configurar el Ã¡rea desplazable del lienzo despuÃ©s de una configuraciÃ³n
+            # Configurar el área desplazable del lienzo después de una configuración
             self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-            # Configurar el Ã¡rea desplazable del lienzo despuÃ©s de una configuraciÃ³n
+            # Configurar el área desplazable del lienzo después de una configuración
             self.update_scrollregion()
             self.download_button.config(state=tk.NORMAL)
+            # Llamar al script de Selenium con la palabra clave como argumento
+            subprocess.run(['python', 'imageIA.py', self.keywords])
 
         except Exception as e:
             print(f"Error al obtener mas imagenes: {e}")
 
     def clear_images(self):
-        # MÃ©todo para destruir los widgets de las imagenes anteriores
+        # Método para destruir los widgets de las imagenes anteriores
         for widget in self.images_frame.winfo_children():
             widget.destroy()
 
@@ -144,7 +148,7 @@ class ImageDownloader:
         self.images = []
 
     def update_scrollregion(self):
-        # MÃ©todo para actualizar la barra deslizadora
+        # Método para actualizar la barra deslizadora
         self.canvas.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox("all"))
 
@@ -165,7 +169,7 @@ class ImageDownloader:
             img_data = self.image_data_list[count]
 
             # Obtener el formato de la imagen original (si es posible)
-            img_format = "png"  # Cambia esto segÃºn tus necesidades
+            img_format = "png"  # Cambia esto según tus necesidades
 
             # Guardar la imagen seleccionada en la nueva carpeta con el formato correcto
             img_path = os.path.join(selected_folder, f"image_{count + 1}.{img_format}")
